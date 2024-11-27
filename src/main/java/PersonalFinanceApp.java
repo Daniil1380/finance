@@ -4,19 +4,25 @@ import java.util.Scanner;
 
 public class PersonalFinanceApp {
 
-    private static Map<String, User> users = new HashMap<>();
-    private static User currentUser = null;
-    private static final Scanner scanner = new Scanner(System.in);
+    private Map<String, User> users = new HashMap<>();
+    private User currentUser = null;
+    private final Scanner scanner;
+    private final Repository repository;
 
-    public static void main(String[] args) {
-        Repository repository = new Repository();
+    public PersonalFinanceApp(Repository repository, Scanner scanner) {
+        this.repository = repository;
+        this.scanner = scanner;
+    }
+
+    public void start() {
         users = repository.loadData();
         runApp();
         repository.saveData(users);
         System.out.println("Данные сохранены. До свидания!");
     }
 
-    private static void runApp() {
+
+    private void runApp() {
         while (true) {
             if (currentUser == null) {
                 MenuUtils.showAuthenticationMenu();
@@ -35,7 +41,7 @@ public class PersonalFinanceApp {
         }
     }
 
-    private static void executeCommand(String command) {
+    private void executeCommand(String command) {
         if (currentUser == null) {
             switch (command) {
                 case "1":
@@ -75,12 +81,12 @@ public class PersonalFinanceApp {
         }
     }
 
-    private static void logout() {
+    private void logout() {
         currentUser = null;
         System.out.println("Вы вышли из системы.");
     }
 
-    private static void register() {
+    private void register() {
         System.out.print("Введите логин: ");
         String username = scanner.nextLine().trim();
         if (users.containsKey(username)) {
@@ -98,7 +104,7 @@ public class PersonalFinanceApp {
         System.out.println("Пользователь успешно зарегистрирован.");
     }
 
-    private static void login() {
+    private void login() {
         System.out.print("Введите логин: ");
         String username = scanner.nextLine().trim();
 
@@ -118,8 +124,10 @@ public class PersonalFinanceApp {
     }
 
 
-    private static void addIncome() {
-        if (currentUser.getWallet() == null) {
+    private void addIncome() {
+        Wallet wallet = currentUser.getWallet();
+
+        if (wallet == null) {
             System.out.println("Кошелек не найден. Ошибка при добавлении дохода.");
             return;
         }
@@ -142,12 +150,14 @@ public class PersonalFinanceApp {
             return;
         }
 
-        currentUser.getWallet().addTransaction(new Transaction(category, amount, TransactionType.INCOME));
+        wallet.addTransaction(new Transaction(category, amount, TransactionType.INCOME));
         System.out.println("Доход успешно добавлен.");
     }
 
-    private static void addExpense() {
-        if (currentUser.getWallet() == null) {
+    private void addExpense() {
+        Wallet wallet = currentUser.getWallet();
+
+        if (wallet == null) {
             System.out.println("Кошелек не найден. Ошибка при добавлении расхода.");
             return;
         }
@@ -170,13 +180,15 @@ public class PersonalFinanceApp {
             return;
         }
 
-        currentUser.getWallet().addTransaction(new Transaction(category, -amount, TransactionType.EXPENSE));
+        wallet.addTransaction(new Transaction(category, -amount, TransactionType.EXPENSE));
         System.out.println("Расход успешно добавлен.");
         checkBudgetLimit(category);
     }
 
-    private static void setBudget() {
-        if (currentUser.getWallet() == null) {
+    private void setBudget() {
+        Wallet wallet = currentUser.getWallet();
+
+        if (wallet == null) {
             System.out.println("Кошелек не найден. Ошибка при установке бюджета.");
             return;
         }
@@ -199,11 +211,11 @@ public class PersonalFinanceApp {
             return;
         }
 
-        currentUser.getWallet().setBudget(category, budget);
+        wallet.setBudget(category, budget);
         System.out.println("Бюджет для категории " + category + " успешно установлен.");
     }
 
-    private static void showStatistics() {
+    private void showStatistics() {
         Wallet wallet = currentUser.getWallet();
 
         if (wallet == null) {
@@ -214,8 +226,9 @@ public class PersonalFinanceApp {
         wallet.showStatistics();
     }
 
-    private static void transferFunds() {
-        if (currentUser.getWallet() == null) {
+    private void transferFunds() {
+        Wallet currentWallet = currentUser.getWallet();
+        if (currentWallet == null) {
             System.out.println("Кошелек не найден. Ошибка при переводе средств.");
             return;
         }
@@ -243,7 +256,7 @@ public class PersonalFinanceApp {
                 System.out.println("Сумма перевода должна быть больше нуля.");
                 return;
             }
-            if (currentUser.getWallet().calculateBalance() < amount) {
+            if (!currentWallet.canTransferMoney(amount)) {
                 System.out.println("Недостаточно средств на балансе для перевода.");
                 return;
             }
@@ -252,12 +265,12 @@ public class PersonalFinanceApp {
             return;
         }
 
-        currentUser.getWallet().addTransaction(new Transaction("Перевод " + recipientUsername, -amount, TransactionType.TRANSFER));
+        currentWallet.addTransaction(new Transaction("Перевод " + recipientUsername, amount * -1, TransactionType.TRANSFER));
         recipient.getWallet().addTransaction(new Transaction("Перевод от " + currentUser.getUsername(), amount, TransactionType.TRANSFER));
         System.out.println("Перевод успешно выполнен.");
     }
 
-    private static void checkBudgetLimit(String category) {
+    private void checkBudgetLimit(String category) {
         Wallet wallet = currentUser.getWallet();
 
         if (wallet == null) {

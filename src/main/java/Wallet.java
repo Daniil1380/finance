@@ -116,4 +116,8 @@ public class Wallet {
             System.out.println("\nВнимание! Ваши расходы превышают доходы.");
         }
     }
+
+    public boolean canTransferMoney(double amount) {
+        return calculateBalance() >= amount;
+    }
 }
